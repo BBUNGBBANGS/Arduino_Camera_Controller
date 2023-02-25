@@ -1,0 +1,6 @@
+{
+    "board": "arduino:avr:uno",
+    "port": "/dev/tty.usbserial-0001",
+    "programmer": "usbasp",
+    "sketch": "Arduino_Camera_Controller.ino"
+}
