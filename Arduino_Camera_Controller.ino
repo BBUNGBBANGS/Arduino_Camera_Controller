@@ -4,12 +4,17 @@
 // parameters: <number of shift registers> (data pin, clock pin, latch pin)
 //ShiftRegister74HC595<1> sr(4, 2, 3);
 
-uint8_t latchPin = 3;
-uint8_t dataPin = 4;
-uint8_t clockPin = 2;
+const uint8_t OutLatchPin = 3;
+const uint8_t OutDataPin = 4;
+const uint8_t OutClockPin = 2;
+const uint8_t InShiftPin = 10;
+const uint8_t InClockPin = 12;
+const uint8_t InClockEnPin = 9;
+const uint8_t InDataPin = 11;
 
-uint8_t Led_Status;
+int8_t Led_Status;
 uint16_t X_Position,Y_Position = 999;
+uint8_t Switch_Status1,Switch_Status2;
 const uint8_t Segment_Num[] = 
 {
     0b00111111, //0
@@ -26,19 +31,31 @@ const uint8_t Segment_Num[] =
 
 void setup() 
 {
-
     // put your setup code here, to run once:
     Serial.begin(115200);
 
-    pinMode(latchPin, OUTPUT);
-    pinMode(dataPin, OUTPUT);
-    pinMode(clockPin, OUTPUT);
+    pinMode(OutLatchPin, OUTPUT);
+    pinMode(OutDataPin, OUTPUT);
+    pinMode(OutClockPin, OUTPUT);
+    pinMode(InShiftPin, OUTPUT);
+    pinMode(InClockPin, OUTPUT);
+    pinMode(InClockEnPin, OUTPUT);
+    pinMode(InDataPin, INPUT);
+
+    digitalWrite(InClockEnPin, LOW); 
+    digitalWrite(InClockPin, HIGH); 
+    digitalWrite(InShiftPin, HIGH);
 }
 
 void loop() 
 {
+    Data_Input();
+    delay(5);
     Data_Output();
     delay(5);
+    Serial.print(Switch_Status1);
+    Serial.print(", ");
+    Serial.println(Switch_Status2);
 }
 
 static void Data_Output(void)
@@ -77,16 +94,39 @@ static void Data_Output(void)
     }
     LED_Out = Led_Status;
 
-    digitalWrite(latchPin,0);
-    shiftOut(dataPin,clockPin,MSBFIRST,X_Out);
-    shiftOut(dataPin,clockPin,MSBFIRST,SegOut);
-    shiftOut(dataPin,clockPin,MSBFIRST,Y_Out);
-    shiftOut(dataPin,clockPin,MSBFIRST,LED_Out);
-    digitalWrite(latchPin,1);
+    digitalWrite(OutLatchPin,LOW);
+    shiftOut(OutDataPin, OutClockPin, MSBFIRST, X_Out);
+    shiftOut(OutDataPin, OutClockPin, MSBFIRST, SegOut);
+    shiftOut(OutDataPin, OutClockPin, MSBFIRST, Y_Out);
+    shiftOut(OutDataPin, OutClockPin, MSBFIRST, LED_Out);
+    digitalWrite(OutLatchPin,HIGH);
 
     segment_index++;
     if (segment_index > 2)
     {
         segment_index = 0;
     }
+}
+
+static void Data_Input(void)
+{
+    uint8_t bitVal,bytesVal;
+    static uint8_t index;
+
+    digitalWrite(InClockPin, HIGH); 
+    digitalWrite(InShiftPin, LOW); 
+    delayMicroseconds(5);
+    digitalWrite(InShiftPin, HIGH); 
+  
+
+    for(int i = 0; i < 8; i++)
+    {
+        Switch_Status1 = shiftIn(InDataPin, InClockPin, MSBFIRST);
+    }
+
+    for(int i = 0; i < 8; i++)
+    {
+        Switch_Status2 = shiftIn(InDataPin, InClockPin, MSBFIRST);
+    }
+
 }
