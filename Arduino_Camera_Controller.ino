@@ -42,12 +42,8 @@ const uint8_t Motor_Y_D_Limit_Pin = 8;
 
 int32_t X_counter; //total 이동거리 : 31300
 int32_t Y_counter; //total 이동거리 : 31000
-
-int32_t X_counter_EEP1,Y_counter_EEP1;
-int32_t X_counter_EEP2,Y_counter_EEP2;
-int32_t X_counter_EEP3,Y_counter_EEP3;
-int32_t X_counter_EEP4,Y_counter_EEP4;
-int32_t X_counter_EEP5,Y_counter_EEP5;
+int32_t X_counter_Target;
+int32_t Y_counter_Target;
 
 uint8_t Led_Right,Led_M1,Led_M2,Led_M3,Led_M4,Led_M5,Output_Trigger;
 uint16_t X_Position,Y_Position;
@@ -97,8 +93,6 @@ void setup()
     pinMode(Motor_Y_D_Limit_Pin, INPUT);
 
     digitalWrite(InClockEnPin, LOW); 
-
-    EEPROM_Read();
 }
 
 void loop() 
@@ -114,20 +108,6 @@ void loop()
     {
         Motor_Control();
     }
-}
-
-static void EEPROM_Read(void)
-{
-    X_counter_EEP1 = (EEPROM.read(0) << 24) | (EEPROM.read(1) << 16) | (EEPROM.read(2) << 8) | (EEPROM.read(3));
-    Y_counter_EEP1 = (EEPROM.read(4) << 24) | (EEPROM.read(5) << 16) | (EEPROM.read(6) << 8) | (EEPROM.read(7));
-    X_counter_EEP2 = (EEPROM.read(8) << 24) | (EEPROM.read(9) << 16) | (EEPROM.read(10) << 8) | (EEPROM.read(11));
-    Y_counter_EEP2 = (EEPROM.read(12) << 24) | (EEPROM.read(13) << 16) | (EEPROM.read(14) << 8) | (EEPROM.read(15));
-    X_counter_EEP3 = (EEPROM.read(16) << 24) | (EEPROM.read(17) << 16) | (EEPROM.read(18) << 8) | (EEPROM.read(19));
-    Y_counter_EEP3 = (EEPROM.read(20) << 24) | (EEPROM.read(21) << 16) | (EEPROM.read(22) << 8) | (EEPROM.read(23));
-    X_counter_EEP4 = (EEPROM.read(24) << 24) | (EEPROM.read(25) << 16) | (EEPROM.read(26) << 8) | (EEPROM.read(27));
-    Y_counter_EEP4 = (EEPROM.read(28) << 24) | (EEPROM.read(29) << 16) | (EEPROM.read(30) << 8) | (EEPROM.read(31));
-    X_counter_EEP5 = (EEPROM.read(32) << 24) | (EEPROM.read(33) << 16) | (EEPROM.read(34) << 8) | (EEPROM.read(35));
-    Y_counter_EEP5 = (EEPROM.read(36) << 24) | (EEPROM.read(37) << 16) | (EEPROM.read(38) << 8) | (EEPROM.read(39));
 }
 
 static void Motor_Initial_Operation(void)
@@ -239,18 +219,11 @@ static void Motor_Control(void)
     {
         Y_Position = 0;
     }
-
-
-    Led_M1 = 1;
-    Led_M2 = 1;
-    Led_M3 = 1;
-    Led_M4 = 1;
-    Led_M5 = 1;
 }
 
 static void Switch_Control(void)
 {
-    static uint32 ctRight,ctM1,ctM2,ctM3,ctM4,ctM5;
+    static uint32_t ctRight,ctM1,ctM2,ctM3,ctM4,ctM5;
 
     if (Switch_Right == SWITCH_PUSH)
     {
@@ -261,7 +234,7 @@ static void Switch_Control(void)
         if (ctRight > 100)
         {
             Led_Right = (~Led_Right) & 0x01;
-            ctRight 0;
+            ctRight = 0;
         }
         else
         {
@@ -278,19 +251,22 @@ static void Switch_Control(void)
         if (ctM1 > 1000)
         {
             Motor_Memory_Status = MOTOR_SAVE_1;
-            EEPROM.write(0, (X_counter_EEP1 >> 24) & 0xff);
-            EEPROM.write(1, (X_counter_EEP1 >> 16) & 0xff);
-            EEPROM.write(2, (X_counter_EEP1 >> 8) & 0xff);
-            EEPROM.write(3, (X_counter_EEP1 >> 0) & 0xff);
-            EEPROM.write(4, (Y_counter_EEP1 >> 24) & 0xff);
-            EEPROM.write(5, (Y_counter_EEP1 >> 16) & 0xff);
-            EEPROM.write(6, (Y_counter_EEP1 >> 8) & 0xff);
-            EEPROM.write(7, (Y_counter_EEP1 >> 0) & 0xff);
+            EEPROM.write(0, (X_counter >> 24) & 0xff);
+            EEPROM.write(1, (X_counter >> 16) & 0xff);
+            EEPROM.write(2, (X_counter >> 8) & 0xff);
+            EEPROM.write(3, (X_counter >> 0) & 0xff);
+            EEPROM.write(4, (Y_counter >> 24) & 0xff);
+            EEPROM.write(5, (Y_counter >> 16) & 0xff);
+            EEPROM.write(6, (Y_counter >> 8) & 0xff);
+            EEPROM.write(7, (Y_counter >> 0) & 0xff);
             ctM1 = 0;
         }
         else if (ctM1 > 100)
         {
             Motor_Memory_Status = MOTOR_MEMORY_1;
+            Led_M1 = 1;
+            X_counter_Target = (EEPROM.read(0) << 24) | (EEPROM.read(1) << 16) | (EEPROM.read(2) << 8) | (EEPROM.read(3));
+            Y_counter_Target = (EEPROM.read(4) << 24) | (EEPROM.read(5) << 16) | (EEPROM.read(6) << 8) | (EEPROM.read(7));
             ctM1 = 0;
         }        
         else
@@ -308,19 +284,22 @@ static void Switch_Control(void)
         if (ctM2 > 1000)
         {
             Motor_Memory_Status = MOTOR_SAVE_2;
-            EEPROM.write(8, (X_counter_EEP2 >> 24) & 0xff);
-            EEPROM.write(9, (X_counter_EEP2 >> 16) & 0xff);
-            EEPROM.write(10, (X_counter_EEP2 >> 8) & 0xff);
-            EEPROM.write(11, (X_counter_EEP2 >> 0) & 0xff);
-            EEPROM.write(12, (Y_counter_EEP2 >> 24) & 0xff);
-            EEPROM.write(13, (Y_counter_EEP2 >> 16) & 0xff);
-            EEPROM.write(14, (Y_counter_EEP2 >> 8) & 0xff);
-            EEPROM.write(15, (Y_counter_EEP2 >> 0) & 0xff);
+            EEPROM.write(8, (X_counter >> 24) & 0xff);
+            EEPROM.write(9, (X_counter >> 16) & 0xff);
+            EEPROM.write(10, (X_counter >> 8) & 0xff);
+            EEPROM.write(11, (X_counter >> 0) & 0xff);
+            EEPROM.write(12, (Y_counter >> 24) & 0xff);
+            EEPROM.write(13, (Y_counter >> 16) & 0xff);
+            EEPROM.write(14, (Y_counter >> 8) & 0xff);
+            EEPROM.write(15, (Y_counter >> 0) & 0xff);
             ctM2 = 0;
         }
         else if (ctM2 > 100)
         {
             Motor_Memory_Status = MOTOR_MEMORY_2;
+            Led_M2 = 1;
+            X_counter_Target = (EEPROM.read(8) << 24) | (EEPROM.read(9) << 16) | (EEPROM.read(10) << 8) | (EEPROM.read(11));
+            Y_counter_Target = (EEPROM.read(12) << 24) | (EEPROM.read(13) << 16) | (EEPROM.read(14) << 8) | (EEPROM.read(15));
             ctM2 = 0;
         }        
         else
@@ -338,19 +317,22 @@ static void Switch_Control(void)
         if (ctM3 > 1000)
         {
             Motor_Memory_Status = MOTOR_SAVE_3;
-            EEPROM.write(16, (X_counter_EEP3 >> 24) & 0xff);
-            EEPROM.write(17, (X_counter_EEP3 >> 16) & 0xff);
-            EEPROM.write(18, (X_counter_EEP3 >> 8) & 0xff);
-            EEPROM.write(19, (X_counter_EEP3 >> 0) & 0xff);
-            EEPROM.write(20, (Y_counter_EEP3 >> 24) & 0xff);
-            EEPROM.write(21, (Y_counter_EEP3 >> 16) & 0xff);
-            EEPROM.write(22, (Y_counter_EEP3 >> 8) & 0xff);
-            EEPROM.write(23, (Y_counter_EEP3 >> 0) & 0xff);
+            EEPROM.write(16, (X_counter >> 24) & 0xff);
+            EEPROM.write(17, (X_counter >> 16) & 0xff);
+            EEPROM.write(18, (X_counter >> 8) & 0xff);
+            EEPROM.write(19, (X_counter >> 0) & 0xff);
+            EEPROM.write(20, (Y_counter >> 24) & 0xff);
+            EEPROM.write(21, (Y_counter >> 16) & 0xff);
+            EEPROM.write(22, (Y_counter >> 8) & 0xff);
+            EEPROM.write(23, (Y_counter >> 0) & 0xff);
             ctM3 = 0;
         }
         else if (ctM3 > 100)
         {
             Motor_Memory_Status = MOTOR_MEMORY_3;
+            Led_M3 = 1;
+            X_counter_Target = (EEPROM.read(16) << 24) | (EEPROM.read(17) << 16) | (EEPROM.read(18) << 8) | (EEPROM.read(19));
+            Y_counter_Target = (EEPROM.read(20) << 24) | (EEPROM.read(21) << 16) | (EEPROM.read(22) << 8) | (EEPROM.read(23));
             ctM3 = 0;
         }        
         else
@@ -368,19 +350,22 @@ static void Switch_Control(void)
         if (ctM4 > 1000)
         {
             Motor_Memory_Status = MOTOR_SAVE_4;
-            EEPROM.write(24, (X_counter_EEP4 >> 24) & 0xff);
-            EEPROM.write(25, (X_counter_EEP4 >> 16) & 0xff);
-            EEPROM.write(26, (X_counter_EEP4 >> 8) & 0xff);
-            EEPROM.write(27, (X_counter_EEP4 >> 0) & 0xff);
-            EEPROM.write(28, (Y_counter_EEP4 >> 24) & 0xff);
-            EEPROM.write(29, (Y_counter_EEP4 >> 16) & 0xff);
-            EEPROM.write(30, (Y_counter_EEP4 >> 8) & 0xff);
-            EEPROM.write(31, (Y_counter_EEP4 >> 0) & 0xff);
+            EEPROM.write(24, (X_counter >> 24) & 0xff);
+            EEPROM.write(25, (X_counter >> 16) & 0xff);
+            EEPROM.write(26, (X_counter >> 8) & 0xff);
+            EEPROM.write(27, (X_counter >> 0) & 0xff);
+            EEPROM.write(28, (Y_counter >> 24) & 0xff);
+            EEPROM.write(29, (Y_counter >> 16) & 0xff);
+            EEPROM.write(30, (Y_counter >> 8) & 0xff);
+            EEPROM.write(31, (Y_counter >> 0) & 0xff);
             ctM4 = 0;
         }
         else if (ctM4 > 100)
         {
             Motor_Memory_Status = MOTOR_MEMORY_4;
+            Led_M4 = 1;
+            X_counter_Target = (EEPROM.read(24) << 24) | (EEPROM.read(25) << 16) | (EEPROM.read(26) << 8) | (EEPROM.read(27));
+            Y_counter_Target = (EEPROM.read(28) << 24) | (EEPROM.read(29) << 16) | (EEPROM.read(30) << 8) | (EEPROM.read(31));
             ctM4 = 0;
         }        
         else
@@ -398,19 +383,22 @@ static void Switch_Control(void)
         if (ctM5 > 1000)
         {
             Motor_Memory_Status = MOTOR_SAVE_5;
-            EEPROM.write(32, (X_counter_EEP5 >> 24) & 0xff);
-            EEPROM.write(33, (X_counter_EEP5 >> 16) & 0xff);
-            EEPROM.write(34, (X_counter_EEP5 >> 8) & 0xff);
-            EEPROM.write(35, (X_counter_EEP5 >> 0) & 0xff);
-            EEPROM.write(36, (Y_counter_EEP5 >> 24) & 0xff);
-            EEPROM.write(37, (Y_counter_EEP5 >> 16) & 0xff);
-            EEPROM.write(38, (Y_counter_EEP5 >> 8) & 0xff);
-            EEPROM.write(39, (Y_counter_EEP5 >> 0) & 0xff);
+            EEPROM.write(32, (X_counter >> 24) & 0xff);
+            EEPROM.write(33, (X_counter >> 16) & 0xff);
+            EEPROM.write(34, (X_counter >> 8) & 0xff);
+            EEPROM.write(35, (X_counter >> 0) & 0xff);
+            EEPROM.write(36, (Y_counter >> 24) & 0xff);
+            EEPROM.write(37, (Y_counter >> 16) & 0xff);
+            EEPROM.write(38, (Y_counter >> 8) & 0xff);
+            EEPROM.write(39, (Y_counter >> 0) & 0xff);
             ctM5 = 0;
         }
         else if (ctM1 > 100)
         {
             Motor_Memory_Status = MOTOR_MEMORY_5;
+            Led_M5 = 1;
+            X_counter_Target = (EEPROM.read(32) << 24) | (EEPROM.read(33) << 16) | (EEPROM.read(34) << 8) | (EEPROM.read(35));
+            Y_counter_Target = (EEPROM.read(36) << 24) | (EEPROM.read(37) << 16) | (EEPROM.read(38) << 8) | (EEPROM.read(39));
             ctM5 = 0;
         }        
         else
