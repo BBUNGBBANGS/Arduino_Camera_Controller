@@ -49,12 +49,18 @@ uint8_t Led_Right,Led_M1,Led_M2,Led_M3,Led_M4,Led_M5,Output_Trigger;
 uint16_t X_Position,Y_Position;
 uint8_t Switch_Y_D,Switch_Y_U,Switch_X_D,Switch_X_U,Switch_Start,Switch_Finish;
 uint8_t Switch_M1,Switch_M2,Switch_M3,Switch_M4,Switch_M5,Switch_Right;
+uint8_t Switch_R_Y_D,Switch_R_Y_U,Switch_R_X_D,Switch_R_X_U;
+uint8_t Switch_R_M1,Switch_R_M2,Switch_R_M3,Switch_R_M4,Switch_R_M5,Switch_R_Right;
 uint8_t Motor_Memory_Status;
 uint8_t Switch_X_D_Limit,Switch_X_U_Limit,Switch_Y_U_Limit,Switch_Y_D_Limit;
 uint32_t Time_EEP;
 
-uint8_t Motor_Init_Flag;
-uint8_t Motor_X_Init,Motor_Y_Init;
+uint8_t Motor_Init_Status;
+uint8_t Motor_Auto_Control;
+
+uint8_t Rx_Buffer[10];
+uint8_t Tx_Buffer[10];
+uint8_t Rx_Index;
 const uint8_t Segment_Num[] = 
 {
     0b00111111, //0
@@ -72,7 +78,7 @@ const uint8_t Segment_Num[] =
 void setup() 
 {
     // put your setup code here, to run once:
-    Serial.begin(115200);
+    Serial.begin(19200);
 
     pinMode(OutLatchPin, OUTPUT);
     pinMode(OutDataPin, OUTPUT);
@@ -92,32 +98,92 @@ void setup()
     pinMode(Motor_Y_U_Limit_Pin, INPUT);
     pinMode(Motor_Y_D_Limit_Pin, INPUT);
 
+    Switch_R_Y_D = 1;
+    Switch_R_Y_U = 1;
+    Switch_R_X_D = 1;
+    Switch_R_X_U = 1;
+    Switch_R_M1 = 1;
+    Switch_R_M2 = 1;
+    Switch_R_M3 = 1;
+    Switch_R_M4 = 1;
+    Switch_R_M5 = 1;
+    Switch_R_Right = 1;
     digitalWrite(InClockEnPin, LOW); 
 }
 
 void loop() 
 {
+    Uart_Communication();
     Data_Input();
-    Switch_Control();
     Data_Output();
 
-    if (Motor_Init_Flag == 0)
+    if (Motor_Init_Status == 0)
     {
         Motor_Initial_Operation();
     }
+    else if (Motor_Init_Status == 2)
+    {
+        Motor_Calibration();
+    }
     else
     {
+        Switch_Control();
         Motor_Control();
     }
-    Serial.print(Motor_Memory_Status);
-    Serial.print(", ");
-    Serial.print(X_counter_Target);
-    Serial.print(", ");
-    Serial.println(Y_counter_Target);
+
+}
+
+static Uart_Communication(void)
+{
+    if (Serial.available() > 0)
+    {
+        Rx_Buffer[Rx_Index] = Serial.read();
+        Rx_Index++;
+    }
+
+    if (Rx_Index >= 6)
+    {
+        if((Rx_Buffer[0] == 0x53) && (Rx_Buffer[1] == 0x02) && (Rx_Buffer[6] == 0x45))
+        {
+            Switch_R_M5 = (~(Rx_Buffer[3] >> 0) & 0x01) & 0x01;
+            Switch_R_M4 = (~(Rx_Buffer[3] >> 1) & 0x01) & 0x01;
+            Switch_R_M3 = (~(Rx_Buffer[3] >> 2) & 0x01) & 0x01;
+            Switch_R_M2 = (~(Rx_Buffer[3] >> 3) & 0x01) & 0x01;
+            Switch_R_M1 = (~(Rx_Buffer[3] >> 4) & 0x01) & 0x01;
+            Switch_R_X_D = (~(Rx_Buffer[3] >> 5) & 0x01) & 0x01;
+            Switch_R_Y_D = (~(Rx_Buffer[3] >> 6) & 0x01) & 0x01;
+            Switch_R_X_U = (~(Rx_Buffer[3] >> 7) & 0x01) & 0x01;
+            Switch_R_Y_U = (~(Rx_Buffer[2] >> 0) & 0x01) & 0x01;
+            Switch_R_Right = (~(Rx_Buffer[2] >> 1) & 0x01) & 0x01;
+        }
+
+        for (uint8_t i = 0; i < 10; i++)
+        {
+            Rx_Buffer[i] = 0x00;
+        }
+        Rx_Index = 0;
+    }
+
+    Tx_Buffer[0] = 0x53;
+    Tx_Buffer[1] = 0x01;
+    Tx_Buffer[2] = ((~Switch_Start & 0x01) << 3) | ((~Switch_Finish & 0x01) << 2) |
+                   ((~Switch_Right & 0x01) << 1) | ((~Switch_Y_U & 0x01) << 0);
+    Tx_Buffer[3] = ((~Switch_X_U & 0x01) << 7) | ((~Switch_Y_D & 0x01) << 6) |
+                   ((~Switch_X_D & 0x01) << 5) | ((~Switch_M1 & 0x01) << 4) |
+                   ((~Switch_M2 & 0x01) << 3) | ((~Switch_M3 & 0x01) << 2) |
+                   ((~Switch_M4 & 0x01) << 1) | ((~Switch_M5 & 0x01) << 0);
+    Tx_Buffer[4] = X_Position;
+    Tx_Buffer[5] = Y_Position;
+    Tx_Buffer[6] = 0x45;
+    for (uint8_t i = 0; i < 7; i++)
+    {
+        Serial.write(Tx_Buffer[i]);
+    }
 }
 
 static void Motor_Initial_Operation(void)
 {
+    static uint8_t Motor_X_Init,Motor_Y_Init;
     if ((Switch_X_U_Limit == SWITCH_NONE) && (Motor_X_Init == 0))
     {
         digitalWrite(Motor_X_Dir_Pin, LOW);
@@ -150,13 +216,190 @@ static void Motor_Initial_Operation(void)
 
     if ((Motor_X_Init == 1) && (Motor_Y_Init == 1))
     {
-        Motor_Init_Flag = 1;
+        Motor_Init_Status = 1;
     }
 }
+static void Motor_Calibration(void)
+{
+    static uint8_t flag_X_U,flag_X_D,flag_Y_U,flag_Y_D,flag_X_Finish,flag_Y_Finish;
+    static uint32_t ctLedBlink;
 
+    if(ctLedBlink < 200)
+    {
+        Led_M1 = 1;
+        Led_M2 = 1;
+        Led_M3 = 1;
+        Led_M4 = 1;
+        Led_M5 = 1;
+    }
+    else if(ctLedBlink < 400)
+    {
+        Led_M1 = 0;
+        Led_M2 = 0;
+        Led_M3 = 0;
+        Led_M4 = 0;
+        Led_M5 = 0;
+    }
+    else
+    {
+        ctLedBlink = 0;
+    }
+    ctLedBlink++;
+
+    if ((Switch_X_U_Limit == SWITCH_NONE) && (flag_X_U == 0))
+    {
+        digitalWrite(Motor_X_Dir_Pin, LOW);
+        digitalWrite(Motor_X_Ena_Pin, HIGH);
+        digitalWrite(Motor_X_Pulse_Pin, HIGH);
+        delayMicroseconds(50);
+        digitalWrite(Motor_X_Pulse_Pin, LOW);
+        delayMicroseconds(50);    
+    }
+    else if (Switch_X_U_Limit == SWITCH_PUSH)
+    {
+        flag_X_U = 1;
+        X_counter = 0;
+    }
+    else{}
+
+    if ((Switch_X_D_Limit == SWITCH_NONE) && (flag_X_U == 1) && (flag_X_D == 0))
+    {
+        digitalWrite(Motor_X_Dir_Pin, HIGH);
+        digitalWrite(Motor_X_Ena_Pin, HIGH);
+        digitalWrite(Motor_X_Pulse_Pin, HIGH);
+        delayMicroseconds(50);
+        digitalWrite(Motor_X_Pulse_Pin, LOW);
+        delayMicroseconds(50);    
+    }
+    else if (Switch_X_D_Limit == SWITCH_PUSH)
+    {
+        flag_X_D = 1;
+    }
+    else{}
+
+    if ((Switch_Y_U_Limit == SWITCH_NONE) && (flag_Y_U == 0))
+    {
+        digitalWrite(Motor_Y_Dir_Pin, LOW);
+        digitalWrite(Motor_Y_Ena_Pin, HIGH);
+        digitalWrite(Motor_Y_Pulse_Pin, HIGH);
+        delayMicroseconds(50);
+        digitalWrite(Motor_Y_Pulse_Pin, LOW);
+        delayMicroseconds(50);    
+    }
+    else if (Switch_Y_U_Limit == SWITCH_PUSH)
+    {
+        flag_Y_U = 1;
+        Y_counter = 0;
+    }
+    else{}
+
+    if ((Switch_Y_D_Limit == SWITCH_NONE) && (flag_Y_U == 1) && (flag_Y_D == 0))
+    {
+        digitalWrite(Motor_Y_Dir_Pin, HIGH);
+        digitalWrite(Motor_Y_Ena_Pin, HIGH);
+        digitalWrite(Motor_Y_Pulse_Pin, HIGH);
+        delayMicroseconds(50);
+        digitalWrite(Motor_Y_Pulse_Pin, LOW);
+        delayMicroseconds(50);    
+    }
+    else if (Switch_Y_D_Limit == SWITCH_PUSH)
+    {
+        flag_Y_D = 1;
+    }
+    else{}
+
+    if ((flag_X_U == 1) && (flag_X_D == 1) && (flag_Y_U == 1) && (flag_Y_D == 1))
+    {
+        if ((Switch_X_U_Limit == SWITCH_NONE) && (flag_X_Finish == 0))
+        {
+            digitalWrite(Motor_X_Dir_Pin, LOW);
+            digitalWrite(Motor_X_Ena_Pin, HIGH);
+            digitalWrite(Motor_X_Pulse_Pin, HIGH);
+            delayMicroseconds(50);
+            digitalWrite(Motor_X_Pulse_Pin, LOW);
+            delayMicroseconds(50);  
+        }
+        else
+        {
+            flag_X_Finish = 1;
+        }
+        if ((Switch_Y_U_Limit == SWITCH_NONE) && (flag_Y_Finish == 0))
+        {
+            digitalWrite(Motor_Y_Dir_Pin, LOW);
+            digitalWrite(Motor_Y_Ena_Pin, HIGH);
+            digitalWrite(Motor_Y_Pulse_Pin, HIGH);
+            delayMicroseconds(50);
+            digitalWrite(Motor_Y_Pulse_Pin, LOW);
+            delayMicroseconds(50);  
+        }
+        else
+        {
+            flag_Y_Finish = 1;
+        }
+
+        if ((flag_X_Finish == 1) && (flag_Y_Finish == 1))
+        {
+            Motor_Init_Status = 1;                
+            Led_M1 = 0;
+            Led_M2 = 0;
+            Led_M3 = 0;
+            Led_M4 = 0;
+            Led_M5 = 0;
+            Motor_Memory_Status = MOTOR_INIT;
+        }
+    }
+}
 static void Motor_Control(void)
 {
-    if ((Switch_X_U == SWITCH_NONE) && (Switch_X_D == SWITCH_PUSH))
+    static uint8_t stAuto_X_U,stAuto_X_D,stAuto_Y_U,stAuto_Y_D;
+    static uint32_t ctCalibration;
+    static uint8_t flag_X_Control,flag_Y_Control;
+
+    if ((Motor_Memory_Status >= MOTOR_MEMORY_1) && (Motor_Memory_Status <= MOTOR_MEMORY_5) && (Motor_Auto_Control == 1))
+    {
+        if ((X_counter_Target - X_counter) > 0)
+        {
+            stAuto_X_U = 1;
+            stAuto_X_D = 0;
+        }
+        else if ((X_counter_Target - X_counter) < 0)
+        {
+            stAuto_X_U = 0;
+            stAuto_X_D = 1;
+        }
+        else if ((X_counter_Target - X_counter) == 0)
+        {
+            stAuto_X_U = 0;
+            stAuto_X_D = 0;
+            flag_X_Control = 1;            
+        }
+        
+        if ((Y_counter_Target - Y_counter) > 0)
+        {
+            stAuto_Y_U = 1;
+            stAuto_Y_D = 0;
+        }
+        else if ((Y_counter_Target - Y_counter) < 0)
+        {
+            stAuto_Y_U = 0;
+            stAuto_Y_D = 1;
+        }
+        else if ((Y_counter_Target - Y_counter) == 0)
+        {
+            stAuto_Y_U = 0;
+            stAuto_Y_D = 0;  
+            flag_Y_Control = 1;          
+        }
+
+        if ((flag_X_Control == 1) && (flag_Y_Control == 1))
+        {
+            flag_X_Control = 0;
+            flag_Y_Control = 0;
+            Motor_Auto_Control = 0;
+        }
+    }
+    if (((Switch_X_U == SWITCH_NONE) && (Switch_X_D == SWITCH_PUSH)) || 
+        ((Switch_R_X_U == SWITCH_NONE) && (Switch_R_X_D == SWITCH_PUSH)) || (stAuto_X_D == 1))
     {
         digitalWrite(Motor_X_Dir_Pin, LOW);
         digitalWrite(Motor_X_Ena_Pin, HIGH);
@@ -166,7 +409,8 @@ static void Motor_Control(void)
         delayMicroseconds(50);
         X_counter--;        
     }
-    else if ((Switch_X_U == SWITCH_PUSH) && (Switch_X_D == SWITCH_NONE))
+    else if (((Switch_X_U == SWITCH_PUSH) && (Switch_X_D == SWITCH_NONE)) ||
+             ((Switch_R_X_U == SWITCH_PUSH) && (Switch_R_X_D == SWITCH_NONE)) || (stAuto_X_U == 1))
     {
         digitalWrite(Motor_X_Dir_Pin, HIGH);
         digitalWrite(Motor_X_Ena_Pin, HIGH);
@@ -182,7 +426,8 @@ static void Motor_Control(void)
         digitalWrite(Motor_X_Ena_Pin, LOW);
     }
 
-    if ((Switch_Y_U == SWITCH_PUSH) && (Switch_Y_D == SWITCH_NONE))
+    if (((Switch_Y_U == SWITCH_PUSH) && (Switch_Y_D == SWITCH_NONE)) ||
+        ((Switch_R_Y_U == SWITCH_PUSH) && (Switch_R_Y_D == SWITCH_NONE)) || (stAuto_Y_D == 1))
     {
         digitalWrite(Motor_Y_Dir_Pin, LOW);
         digitalWrite(Motor_Y_Ena_Pin, HIGH);
@@ -192,7 +437,8 @@ static void Motor_Control(void)
         delayMicroseconds(50);
         Y_counter--;
     }
-    else if ((Switch_Y_U == SWITCH_NONE) && (Switch_Y_D == SWITCH_PUSH))
+    else if (((Switch_Y_U == SWITCH_NONE) && (Switch_Y_D == SWITCH_PUSH)) ||
+             ((Switch_R_Y_U == SWITCH_NONE) && (Switch_R_Y_D == SWITCH_PUSH)) || (stAuto_Y_U == 1))
     {
         digitalWrite(Motor_Y_Dir_Pin, HIGH);
         digitalWrite(Motor_Y_Ena_Pin, HIGH);
@@ -206,6 +452,17 @@ static void Motor_Control(void)
     {
         digitalWrite(Motor_Y_Ena_Pin, LOW);
         digitalWrite(Motor_Y_Pulse_Pin, LOW);
+    }
+
+    if (((Switch_X_U == SWITCH_PUSH) && (Switch_X_D == SWITCH_PUSH)) || 
+        ((Switch_R_X_U == SWITCH_PUSH) && (Switch_R_X_D == SWITCH_PUSH)))
+    {
+        ctCalibration++;
+        if (ctCalibration > 800)
+        {
+            ctCalibration = 0;
+            Motor_Init_Status = 2;
+        }
     }
 
     if(X_counter > 0)
@@ -231,7 +488,7 @@ static void Switch_Control(void)
     static uint32_t ctRight,ctM1,ctM2,ctM3,ctM4,ctM5;    
     static uint32_t ctLedM1,ctLedM2,ctLedM3,ctLedM4,ctLedM5;
     static uint8_t flagM1,flagM2,flagM3,flagM4,flagM5;
-    if (Switch_Right == SWITCH_PUSH)
+    if ((Switch_Right == SWITCH_PUSH) || (Switch_R_Right == SWITCH_PUSH))
     {
         ctRight++;
     }
@@ -240,6 +497,7 @@ static void Switch_Control(void)
         if (ctRight > 50)
         {
             Led_Right = (~Led_Right) & 0x01;
+            Output_Trigger = (~Output_Trigger) & 0x01;
             ctRight = 0;
         }
         else
@@ -248,7 +506,7 @@ static void Switch_Control(void)
         }
     }
     
-    if (Switch_M1 == SWITCH_PUSH)
+    if ((Switch_M1 == SWITCH_PUSH) || (Switch_R_M1 == SWITCH_PUSH))
     {
        ctM1++;
     }
@@ -287,6 +545,7 @@ static void Switch_Control(void)
             Led_M5 = 0;
             X_counter_Target = (EEPROM.read(0) << 24) | (EEPROM.read(1) << 16) | (EEPROM.read(2) << 8) | (EEPROM.read(3));
             Y_counter_Target = (EEPROM.read(4) << 24) | (EEPROM.read(5) << 16) | (EEPROM.read(6) << 8) | (EEPROM.read(7));
+            Motor_Auto_Control = 1;
             ctM1 = 0;
         }        
         else
@@ -295,7 +554,7 @@ static void Switch_Control(void)
         }
     }
     
-    if (Switch_M2 == SWITCH_PUSH)
+    if ((Switch_M2 == SWITCH_PUSH) || (Switch_R_M2 == SWITCH_PUSH))
     {
        ctM2++;
     }
@@ -334,6 +593,7 @@ static void Switch_Control(void)
             Led_M5 = 0;
             X_counter_Target = (EEPROM.read(8) << 24) | (EEPROM.read(9) << 16) | (EEPROM.read(10) << 8) | (EEPROM.read(11));
             Y_counter_Target = (EEPROM.read(12) << 24) | (EEPROM.read(13) << 16) | (EEPROM.read(14) << 8) | (EEPROM.read(15));
+            Motor_Auto_Control = 1;
             ctM2 = 0;
         }        
         else
@@ -351,7 +611,7 @@ static void Switch_Control(void)
         Y_counter_Target = 0;
     }
     
-    if (Switch_M3 == SWITCH_PUSH)
+    if ((Switch_M3 == SWITCH_PUSH) || (Switch_R_M3 == SWITCH_PUSH))
     {
        ctM3++;
     }
@@ -390,6 +650,7 @@ static void Switch_Control(void)
             Led_M5 = 0;
             X_counter_Target = (EEPROM.read(16) << 24) | (EEPROM.read(17) << 16) | (EEPROM.read(18) << 8) | (EEPROM.read(19));
             Y_counter_Target = (EEPROM.read(20) << 24) | (EEPROM.read(21) << 16) | (EEPROM.read(22) << 8) | (EEPROM.read(23));
+            Motor_Auto_Control = 1;
             ctM3 = 0;
         }        
         else
@@ -398,7 +659,7 @@ static void Switch_Control(void)
         }
     }
     
-    if (Switch_M4 == SWITCH_PUSH)
+    if ((Switch_M4 == SWITCH_PUSH) || (Switch_R_M4 == SWITCH_PUSH))
     {
        ctM4++;
     }
@@ -437,6 +698,7 @@ static void Switch_Control(void)
             Led_M5 = 0;
             X_counter_Target = (EEPROM.read(24) << 24) | (EEPROM.read(25) << 16) | (EEPROM.read(26) << 8) | (EEPROM.read(27));
             Y_counter_Target = (EEPROM.read(28) << 24) | (EEPROM.read(29) << 16) | (EEPROM.read(30) << 8) | (EEPROM.read(31));
+            Motor_Auto_Control = 1;
             ctM4 = 0;
         }        
         else
@@ -445,7 +707,7 @@ static void Switch_Control(void)
         }
     }
 
-    if (Switch_M5 == SWITCH_PUSH)
+    if ((Switch_M5 == SWITCH_PUSH) || (Switch_R_M5 == SWITCH_PUSH))
     {
        ctM5++;
     }
@@ -484,6 +746,7 @@ static void Switch_Control(void)
             Led_M5 = 1;
             X_counter_Target = (EEPROM.read(32) << 24) | (EEPROM.read(33) << 16) | (EEPROM.read(34) << 8) | (EEPROM.read(35));
             Y_counter_Target = (EEPROM.read(36) << 24) | (EEPROM.read(37) << 16) | (EEPROM.read(38) << 8) | (EEPROM.read(39));
+            Motor_Auto_Control = 1;
             ctM5 = 0;
         }        
         else
