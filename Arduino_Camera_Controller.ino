@@ -224,6 +224,7 @@ static void Motor_Initial_Operation(void)
         Motor_Init_Status = 1;
     }
 }
+
 static void Motor_Calibration(void)
 {
     static uint8_t flag_X_U,flag_X_D,flag_Y_U,flag_Y_D,flag_X_Finish,flag_Y_Finish;
@@ -404,7 +405,7 @@ static void Motor_Control(void)
         }
     }
     if ((((Switch_X_U == SWITCH_NONE) && (Switch_X_D == SWITCH_PUSH)) || 
-        ((Switch_R_X_U == SWITCH_NONE) && (Switch_R_X_D == SWITCH_PUSH)) || (stAuto_X_D == 1)) && (Switch_X_D_Limit == SWITCH_NONE))
+        ((Switch_R_X_U == SWITCH_NONE) && (Switch_R_X_D == SWITCH_PUSH)) || (stAuto_X_D == 1)) && (Switch_X_U_Limit == SWITCH_NONE))
     {
         digitalWrite(Motor_X_Dir_Pin, LOW);
         digitalWrite(Motor_X_Ena_Pin, HIGH);
@@ -415,7 +416,7 @@ static void Motor_Control(void)
         X_counter--;        
     }
     else if ((((Switch_X_U == SWITCH_PUSH) && (Switch_X_D == SWITCH_NONE)) ||
-             ((Switch_R_X_U == SWITCH_PUSH) && (Switch_R_X_D == SWITCH_NONE)) || (stAuto_X_U == 1)) && (Switch_X_U_Limit == SWITCH_NONE))
+             ((Switch_R_X_U == SWITCH_PUSH) && (Switch_R_X_D == SWITCH_NONE)) || (stAuto_X_U == 1)) && (Switch_X_D_Limit == SWITCH_NONE))
     {
         digitalWrite(Motor_X_Dir_Pin, HIGH);
         digitalWrite(Motor_X_Ena_Pin, HIGH);
@@ -432,7 +433,7 @@ static void Motor_Control(void)
     }
 
     if ((((Switch_Y_U == SWITCH_PUSH) && (Switch_Y_D == SWITCH_NONE)) ||
-        ((Switch_R_Y_U == SWITCH_PUSH) && (Switch_R_Y_D == SWITCH_NONE)) || (stAuto_Y_D == 1)) && (Switch_Y_D_Limit == SWITCH_NONE))
+        ((Switch_R_Y_U == SWITCH_PUSH) && (Switch_R_Y_D == SWITCH_NONE)) || (stAuto_Y_D == 1)) && (Switch_Y_U_Limit == SWITCH_NONE))
     {
         digitalWrite(Motor_Y_Dir_Pin, LOW);
         digitalWrite(Motor_Y_Ena_Pin, HIGH);
@@ -443,7 +444,7 @@ static void Motor_Control(void)
         Y_counter--;
     }
     else if ((((Switch_Y_U == SWITCH_NONE) && (Switch_Y_D == SWITCH_PUSH)) ||
-             ((Switch_R_Y_U == SWITCH_NONE) && (Switch_R_Y_D == SWITCH_PUSH)) || (stAuto_Y_U == 1)) && (Switch_Y_U_Limit == SWITCH_NONE))
+             ((Switch_R_Y_U == SWITCH_NONE) && (Switch_R_Y_D == SWITCH_PUSH)) || (stAuto_Y_U == 1)) && (Switch_Y_D_Limit == SWITCH_NONE))
     {
         digitalWrite(Motor_Y_Dir_Pin, HIGH);
         digitalWrite(Motor_Y_Ena_Pin, HIGH);
