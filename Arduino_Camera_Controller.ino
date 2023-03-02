@@ -151,10 +151,10 @@ static Uart_Communication(void)
             Switch_R_M3 = (~(Rx_Buffer[3] >> 2) & 0x01) & 0x01;
             Switch_R_M2 = (~(Rx_Buffer[3] >> 3) & 0x01) & 0x01;
             Switch_R_M1 = (~(Rx_Buffer[3] >> 4) & 0x01) & 0x01;
-            Switch_R_X_D = (~(Rx_Buffer[3] >> 5) & 0x01) & 0x01;
-            Switch_R_Y_D = (~(Rx_Buffer[3] >> 6) & 0x01) & 0x01;
-            Switch_R_X_U = (~(Rx_Buffer[3] >> 7) & 0x01) & 0x01;
-            Switch_R_Y_U = (~(Rx_Buffer[2] >> 0) & 0x01) & 0x01;
+            Switch_R_X_U = (~(Rx_Buffer[3] >> 5) & 0x01) & 0x01;
+            Switch_R_Y_U = (~(Rx_Buffer[3] >> 6) & 0x01) & 0x01;
+            Switch_R_X_D = (~(Rx_Buffer[3] >> 7) & 0x01) & 0x01;
+            Switch_R_Y_D = (~(Rx_Buffer[2] >> 0) & 0x01) & 0x01;
             Switch_R_Right = (~(Rx_Buffer[2] >> 1) & 0x01) & 0x01;
         }
 
@@ -170,9 +170,9 @@ static Uart_Communication(void)
         Tx_Buffer[0] = 0x53;
         Tx_Buffer[1] = 0x01;
         Tx_Buffer[2] = ((~Switch_Start & 0x01) << 3) | ((~Switch_Finish & 0x01) << 2) |
-                    ((~Switch_Right & 0x01) << 1) | ((~Switch_Y_U & 0x01) << 0);
-        Tx_Buffer[3] = ((~Switch_X_U & 0x01) << 7) | ((~Switch_Y_D & 0x01) << 6) |
-                    ((~Switch_X_D & 0x01) << 5) | ((~Switch_M1 & 0x01) << 4) |
+                    ((~Switch_Right & 0x01) << 1) | ((~Switch_Y_D & 0x01) << 0);
+        Tx_Buffer[3] = ((~Switch_X_D & 0x01) << 7) | ((~Switch_Y_U & 0x01) << 6) |
+                    ((~Switch_X_U & 0x01) << 5) | ((~Switch_M1 & 0x01) << 4) |
                     ((~Switch_M2 & 0x01) << 3) | ((~Switch_M3 & 0x01) << 2) |
                     ((~Switch_M4 & 0x01) << 1) | ((~Switch_M5 & 0x01) << 0);
         Tx_Buffer[4] = X_Position;
@@ -921,10 +921,10 @@ static void Data_Input(void)
     Switch_M1 = (Switch_Status1 >> 4) & 0x01;
     Switch_Right = (Switch_Status1 >> 5) & 0x01;
 
-    Switch_Y_D = (Switch_Status2 >> 0) & 0x01;
-    Switch_Y_U = (Switch_Status2 >> 1) & 0x01;
-    Switch_X_D = (Switch_Status2 >> 2) & 0x01;
-    Switch_X_U = (Switch_Status2 >> 3) & 0x01;
+    Switch_Y_U = (Switch_Status2 >> 0) & 0x01;
+    Switch_Y_D = (Switch_Status2 >> 1) & 0x01;
+    Switch_X_U = (Switch_Status2 >> 2) & 0x01;
+    Switch_X_D = (Switch_Status2 >> 3) & 0x01;
     Switch_Start = (Switch_Status2 >> 4) & 0x01;
     Switch_Finish = (Switch_Status2 >> 5) & 0x01;
 
