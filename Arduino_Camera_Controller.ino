@@ -61,6 +61,7 @@ uint8_t Motor_Auto_Control;
 uint8_t Rx_Buffer[10];
 uint8_t Tx_Buffer[10];
 uint8_t Rx_Index;
+uint8_t Tx_Request;
 const uint8_t Segment_Num[] = 
 {
     0b00111111, //0
@@ -164,21 +165,26 @@ static Uart_Communication(void)
         Rx_Index = 0;
     }
 
-    Tx_Buffer[0] = 0x53;
-    Tx_Buffer[1] = 0x01;
-    Tx_Buffer[2] = ((~Switch_Start & 0x01) << 3) | ((~Switch_Finish & 0x01) << 2) |
-                   ((~Switch_Right & 0x01) << 1) | ((~Switch_Y_U & 0x01) << 0);
-    Tx_Buffer[3] = ((~Switch_X_U & 0x01) << 7) | ((~Switch_Y_D & 0x01) << 6) |
-                   ((~Switch_X_D & 0x01) << 5) | ((~Switch_M1 & 0x01) << 4) |
-                   ((~Switch_M2 & 0x01) << 3) | ((~Switch_M3 & 0x01) << 2) |
-                   ((~Switch_M4 & 0x01) << 1) | ((~Switch_M5 & 0x01) << 0);
-    Tx_Buffer[4] = X_Position;
-    Tx_Buffer[5] = Y_Position;
-    Tx_Buffer[6] = 0x45;
-    for (uint8_t i = 0; i < 7; i++)
+    if(Tx_Request == 1)
     {
-        Serial.write(Tx_Buffer[i]);
+        Tx_Buffer[0] = 0x53;
+        Tx_Buffer[1] = 0x01;
+        Tx_Buffer[2] = ((~Switch_Start & 0x01) << 3) | ((~Switch_Finish & 0x01) << 2) |
+                    ((~Switch_Right & 0x01) << 1) | ((~Switch_Y_U & 0x01) << 0);
+        Tx_Buffer[3] = ((~Switch_X_U & 0x01) << 7) | ((~Switch_Y_D & 0x01) << 6) |
+                    ((~Switch_X_D & 0x01) << 5) | ((~Switch_M1 & 0x01) << 4) |
+                    ((~Switch_M2 & 0x01) << 3) | ((~Switch_M3 & 0x01) << 2) |
+                    ((~Switch_M4 & 0x01) << 1) | ((~Switch_M5 & 0x01) << 0);
+        Tx_Buffer[4] = X_Position;
+        Tx_Buffer[5] = Y_Position;
+        Tx_Buffer[6] = 0x45;
+        for (uint8_t i = 0; i < 7; i++)
+        {
+            Serial.write(Tx_Buffer[i]);
+        }
+        Tx_Request = 0;
     }
+
 }
 
 static void Motor_Initial_Operation(void)
@@ -921,6 +927,14 @@ static void Data_Input(void)
     Switch_X_U = (Switch_Status2 >> 3) & 0x01;
     Switch_Start = (Switch_Status2 >> 4) & 0x01;
     Switch_Finish = (Switch_Status2 >> 5) & 0x01;
+
+    if ((Switch_M5 == SWITCH_PUSH) || (Switch_M4 == SWITCH_PUSH) || (Switch_M3 == SWITCH_PUSH) || 
+        (Switch_M2 == SWITCH_PUSH) || (Switch_M1 == SWITCH_PUSH) || (Switch_Right == SWITCH_PUSH) ||
+        (Switch_Y_D == SWITCH_PUSH) || (Switch_Y_U == SWITCH_PUSH) || (Switch_X_D == SWITCH_PUSH) ||
+        (Switch_X_U == SWITCH_PUSH) || (Switch_Start == SWITCH_PUSH) || (Switch_Finish == SWITCH_PUSH))
+    {
+        Tx_Request = 1;
+    }
 }
 static uint8_t Data_Read_Begin(void)
 {
