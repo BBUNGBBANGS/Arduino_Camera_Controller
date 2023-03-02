@@ -502,6 +502,7 @@ static void Switch_Control(void)
     {
         if (ctRight > 50)
         {
+            Tx_Request = 1;
             Led_Right = (~Led_Right) & 0x01;
             Output_Trigger = (~Output_Trigger) & 0x01;
             ctRight = 0;
@@ -543,6 +544,7 @@ static void Switch_Control(void)
         }
         else if (ctM1 > 50)
         {
+            Tx_Request = 1;
             Motor_Memory_Status = MOTOR_MEMORY_1;
             Led_M1 = 1;
             Led_M2 = 0;
@@ -591,6 +593,7 @@ static void Switch_Control(void)
         }
         else if (ctM2 > 50)
         {
+            Tx_Request = 1;
             Motor_Memory_Status = MOTOR_MEMORY_2;
             Led_M1 = 0;
             Led_M2 = 1;
@@ -648,6 +651,7 @@ static void Switch_Control(void)
         }
         else if (ctM3 > 50)
         {
+            Tx_Request = 1;
             Motor_Memory_Status = MOTOR_MEMORY_3;
             Led_M1 = 0;
             Led_M2 = 0;
@@ -696,6 +700,7 @@ static void Switch_Control(void)
         }
         else if (ctM4 > 50)
         {
+            Tx_Request = 1;
             Motor_Memory_Status = MOTOR_MEMORY_4;
             Led_M1 = 0;
             Led_M2 = 0;
@@ -744,6 +749,7 @@ static void Switch_Control(void)
         }
         else if (ctM5 > 50)
         {
+            Tx_Request = 1;
             Motor_Memory_Status = MOTOR_MEMORY_5;
             Led_M1 = 0;
             Led_M2 = 0;
@@ -905,6 +911,8 @@ static void Data_Output(void)
 static void Data_Input(void)
 {
     uint8_t Switch_Status1,Switch_Status2;
+    static uint8_t stStartOld,stFinishOld;
+
     Data_Read_Begin();
     Switch_Status1 = Data_Read();
     Switch_Status2 = Data_Read();
@@ -928,7 +936,7 @@ static void Data_Input(void)
     Switch_Start = (Switch_Status2 >> 4) & 0x01;
     Switch_Finish = (Switch_Status2 >> 5) & 0x01;
 
-    if ((Switch_Start == SWITCH_PUSH) || (Switch_Finish == SWITCH_PUSH))
+    if (((Switch_Start == SWITCH_PUSH) && (stStartOld == SWITCH_NONE)) || ((Switch_Finish == SWITCH_PUSH) && (stFinishOld == SWITCH_NONE)))
     {
         Tx_Request = 1;
     }
