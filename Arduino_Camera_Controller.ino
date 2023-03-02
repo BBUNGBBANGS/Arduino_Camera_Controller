@@ -79,7 +79,7 @@ const uint8_t Segment_Num[] =
 void setup() 
 {
     // put your setup code here, to run once:
-    Serial.begin(19200);
+    Serial.begin(115200);
 
     pinMode(OutLatchPin, OUTPUT);
     pinMode(OutDataPin, OUTPUT);
@@ -928,10 +928,7 @@ static void Data_Input(void)
     Switch_Start = (Switch_Status2 >> 4) & 0x01;
     Switch_Finish = (Switch_Status2 >> 5) & 0x01;
 
-    if ((Switch_M5 == SWITCH_PUSH) || (Switch_M4 == SWITCH_PUSH) || (Switch_M3 == SWITCH_PUSH) || 
-        (Switch_M2 == SWITCH_PUSH) || (Switch_M1 == SWITCH_PUSH) || (Switch_Right == SWITCH_PUSH) ||
-        (Switch_Y_D == SWITCH_PUSH) || (Switch_Y_U == SWITCH_PUSH) || (Switch_X_D == SWITCH_PUSH) ||
-        (Switch_X_U == SWITCH_PUSH) || (Switch_Start == SWITCH_PUSH) || (Switch_Finish == SWITCH_PUSH))
+    if ((Switch_Start == SWITCH_PUSH) || (Switch_Finish == SWITCH_PUSH))
     {
         Tx_Request = 1;
     }
