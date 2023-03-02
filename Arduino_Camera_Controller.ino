@@ -131,7 +131,6 @@ void loop()
         Switch_Control();
         Motor_Control();
     }
-
 }
 
 static Uart_Communication(void)
