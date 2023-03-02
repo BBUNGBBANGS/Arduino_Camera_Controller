@@ -142,20 +142,20 @@ static Uart_Communication(void)
         Rx_Index++;
     }
 
-    if (Rx_Index >= 6)
+    if (Rx_Index >= 7)
     {
         if((Rx_Buffer[0] == 0x53) && (Rx_Buffer[1] == 0x02) && (Rx_Buffer[6] == 0x45))
         {
-            Switch_R_M5 = (~(Rx_Buffer[3] >> 0) & 0x01) & 0x01;
-            Switch_R_M4 = (~(Rx_Buffer[3] >> 1) & 0x01) & 0x01;
-            Switch_R_M3 = (~(Rx_Buffer[3] >> 2) & 0x01) & 0x01;
-            Switch_R_M2 = (~(Rx_Buffer[3] >> 3) & 0x01) & 0x01;
-            Switch_R_M1 = (~(Rx_Buffer[3] >> 4) & 0x01) & 0x01;
-            Switch_R_X_D = (~(Rx_Buffer[3] >> 5) & 0x01) & 0x01;
-            Switch_R_Y_D = (~(Rx_Buffer[3] >> 6) & 0x01) & 0x01;
-            Switch_R_X_U = (~(Rx_Buffer[3] >> 7) & 0x01) & 0x01;
-            Switch_R_Y_U = (~(Rx_Buffer[2] >> 0) & 0x01) & 0x01;
-            Switch_R_Right = (~(Rx_Buffer[2] >> 1) & 0x01) & 0x01;
+            Switch_R_M5 = ~((Rx_Buffer[3] >> 0) & 0x01) & 0x01;
+            Switch_R_M4 = ~((Rx_Buffer[3] >> 1) & 0x01) & 0x01;
+            Switch_R_M3 = ~((Rx_Buffer[3] >> 2) & 0x01) & 0x01;
+            Switch_R_M2 = ~((Rx_Buffer[3] >> 3) & 0x01) & 0x01;
+            Switch_R_M1 = ~((Rx_Buffer[3] >> 4) & 0x01) & 0x01;
+            Switch_R_X_D = ~((Rx_Buffer[3] >> 5) & 0x01) & 0x01;
+            Switch_R_Y_D = ~((Rx_Buffer[3] >> 6) & 0x01) & 0x01;
+            Switch_R_X_U = ~((Rx_Buffer[3] >> 7) & 0x01) & 0x01;
+            Switch_R_Y_U = ~((Rx_Buffer[2] >> 0) & 0x01) & 0x01;
+            Switch_R_Right = ~((Rx_Buffer[2] >> 1) & 0x01) & 0x01;
         }
 
         for (uint8_t i = 0; i < 10; i++)
