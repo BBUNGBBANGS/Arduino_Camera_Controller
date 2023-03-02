@@ -51,6 +51,7 @@ uint8_t Switch_Y_D,Switch_Y_U,Switch_X_D,Switch_X_U,Switch_Start,Switch_Finish;
 uint8_t Switch_M1,Switch_M2,Switch_M3,Switch_M4,Switch_M5,Switch_Right;
 uint8_t Switch_R_Y_D,Switch_R_Y_U,Switch_R_X_D,Switch_R_X_U;
 uint8_t Switch_R_M1,Switch_R_M2,Switch_R_M3,Switch_R_M4,Switch_R_M5,Switch_R_Right;
+uint8_t StatusM1,StatusM2,StatusM3,StatusM4,StatusM5,StatusRight,StatusStart,StatusFinish;
 uint8_t Motor_Memory_Status;
 uint8_t Switch_X_D_Limit,Switch_X_U_Limit,Switch_Y_U_Limit,Switch_Y_D_Limit;
 uint32_t Time_EEP;
@@ -168,12 +169,12 @@ static Uart_Communication(void)
     {
         Tx_Buffer[0] = 0x53;
         Tx_Buffer[1] = 0x01;
-        Tx_Buffer[2] = ((~Switch_Start & 0x01) << 3) | ((~Switch_Finish & 0x01) << 2) |
-                    ((~Switch_Right & 0x01) << 1) | ((~Switch_Y_U & 0x01) << 0);
+        Tx_Buffer[2] = ((StatusStart & 0x01) << 3) | ((StatusFinish & 0x01) << 2) |
+                    ((StatusRight & 0x01) << 1) | ((~Switch_Y_U & 0x01) << 0);
         Tx_Buffer[3] = ((~Switch_X_U & 0x01) << 7) | ((~Switch_Y_D & 0x01) << 6) |
-                    ((~Switch_X_D & 0x01) << 5) | ((~Switch_M1 & 0x01) << 4) |
-                    ((~Switch_M2 & 0x01) << 3) | ((~Switch_M3 & 0x01) << 2) |
-                    ((~Switch_M4 & 0x01) << 1) | ((~Switch_M5 & 0x01) << 0);
+                    ((~Switch_X_D & 0x01) << 5) | ((StatusM1 & 0x01) << 4) |
+                    ((StatusM2 & 0x01) << 3) | ((StatusM3 & 0x01) << 2) |
+                    ((StatusM4 & 0x01) << 1) | ((StatusM5 & 0x01) << 0);
         Tx_Buffer[4] = X_Position;
         Tx_Buffer[5] = Y_Position;
         Tx_Buffer[6] = 0x45;
@@ -182,6 +183,14 @@ static Uart_Communication(void)
             Serial.write(Tx_Buffer[i]);
         }
         Tx_Request = 0;
+        StatusStart = 0;
+        StatusFinish = 0;
+        StatusM1 = 0;
+        StatusM2 = 0;
+        StatusM3 = 0;
+        StatusM4 = 0;
+        StatusM5 = 0;
+        StatusRight = 0;
     }
 
 }
@@ -505,6 +514,7 @@ static void Switch_Control(void)
             Tx_Request = 1;
             Led_Right = (~Led_Right) & 0x01;
             Output_Trigger = (~Output_Trigger) & 0x01;
+            StatusRight = (~StatusRight) & 0x01;
             ctRight = 0;
         }
         else
@@ -545,6 +555,7 @@ static void Switch_Control(void)
         else if (ctM1 > 50)
         {
             Tx_Request = 1;
+            StatusM1 = 1;
             Motor_Memory_Status = MOTOR_MEMORY_1;
             Led_M1 = 1;
             Led_M2 = 0;
@@ -594,6 +605,7 @@ static void Switch_Control(void)
         else if (ctM2 > 50)
         {
             Tx_Request = 1;
+            StatusM2 = 1;
             Motor_Memory_Status = MOTOR_MEMORY_2;
             Led_M1 = 0;
             Led_M2 = 1;
@@ -652,6 +664,7 @@ static void Switch_Control(void)
         else if (ctM3 > 50)
         {
             Tx_Request = 1;
+            StatusM3 = 1;
             Motor_Memory_Status = MOTOR_MEMORY_3;
             Led_M1 = 0;
             Led_M2 = 0;
@@ -701,6 +714,7 @@ static void Switch_Control(void)
         else if (ctM4 > 50)
         {
             Tx_Request = 1;
+            StatusM4 = 1;
             Motor_Memory_Status = MOTOR_MEMORY_4;
             Led_M1 = 0;
             Led_M2 = 0;
@@ -750,6 +764,7 @@ static void Switch_Control(void)
         else if (ctM5 > 50)
         {
             Tx_Request = 1;
+            StatusM5 = 1;
             Motor_Memory_Status = MOTOR_MEMORY_5;
             Led_M1 = 0;
             Led_M2 = 0;
@@ -936,10 +951,18 @@ static void Data_Input(void)
     Switch_Start = (Switch_Status2 >> 4) & 0x01;
     Switch_Finish = (Switch_Status2 >> 5) & 0x01;
 
-    if (((Switch_Start == SWITCH_PUSH) && (stStartOld == SWITCH_NONE)) || ((Switch_Finish == SWITCH_PUSH) && (stFinishOld == SWITCH_NONE)))
+    if ((Switch_Start == SWITCH_PUSH) && (stStartOld == SWITCH_NONE))
     {
         Tx_Request = 1;
+        StatusStart = 1;
     }
+    if ((Switch_Finish == SWITCH_PUSH) && (stFinishOld == SWITCH_NONE))
+    {
+        Tx_Request = 1;
+        StatusFinish = 1;
+    }
+    stStartOld = Switch_Start;
+    stFinishOld = Switch_Finish;
 }
 static uint8_t Data_Read_Begin(void)
 {
